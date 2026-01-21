@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MLflow - Sign In</title>
+    <script src="{{ web_component_url }}"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 480px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        #descope-container {
+            margin: 0 auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #e2e8f0;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🤖</div>
+            <h1>Welcome to MLflow</h1>
+            <p>Sign in to access your ML experiments</p>
+        </div>
+
+        <div id="error-message" class="error"></div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading authentication...</p>
+        </div>
+
+        <div id="descope-container">
+            <descope-wc
+                id="descope-wc"
+                project-id="{{ project_id }}"
+                flow-id="{{ flow_id }}"
+                base-url="{{ base_url }}"
+            ></descope-wc>
+        </div>
+    </div>
+
+    <script>
+        // Hide loading spinner once DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loading').style.display = 'none';
+        });
+
+        const descopeWc = document.getElementById('descope-wc');
+        const errorElement = document.getElementById('error-message');
+
+        // Handle successful authentication
+        descopeWc.addEventListener('success', async (e) => {
+            console.log('Authentication successful');
+
+            try {
+                const detail = e.detail;
+
+                // Set secure cookies with JWT tokens
+                const cookieOptions = [
+                    `path=${detail.cookiePath || '/'}`,
+                    'samesite=strict',
+                ];
+
+                // Add secure flag in production
+                if (window.location.protocol === 'https:') {
+                    cookieOptions.push('secure');
+                }
+
+                // Calculate max age (default to 1 hour if not provided)
+                const maxAge = detail.cookieMaxAge || 3600;
+                cookieOptions.push(`max-age=${maxAge}`);
+
+                // Set session cookie
+                document.cookie = `{{ session_cookie_name }}=${detail.sessionJwt};${cookieOptions.join(';')}`;
+
+                // Set refresh cookie
+                document.cookie = `{{ refresh_cookie_name }}=${detail.refreshJwt};${cookieOptions.join(';')}`;
+
+                console.log('Tokens stored, redirecting...');
+
+                // Redirect to MLflow UI
+                window.location.href = "{{ redirect_url }}";
+
+            } catch (error) {
+                console.error('Error during authentication callback:', error);
+                showError('Authentication succeeded but failed to save session. Please try again.');
+            }
+        });
+
+        // Handle authentication errors
+        descopeWc.addEventListener('error', (e) => {
+            console.error('Authentication error:', e.detail);
+            showError(e.detail.errorMessage || 'Authentication failed. Please try again.');
+        });
+
+        // Utility function to show errors
+        function showError(message) {
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                errorElement.classList.remove('show');
+            }, 5000);
+        }
+
+        // Check if we have an error parameter in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const errorParam = urlParams.get('error');
+        if (errorParam) {
+            showError(decodeURIComponent(errorParam));
+        }
+    </script>
+</body>
+</html>
