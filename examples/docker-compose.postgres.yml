@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mlflow-postgres
+    environment:
+      - POSTGRES_USER=mlflow
+      - POSTGRES_PASSWORD=mlflow_password
+      - POSTGRES_DB=mlflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mlflow:
+    image: python:3.11-slim
+    container_name: mlflow-descope
+    command: >
+      sh -c "
+        pip install --no-cache-dir mlflow mlflow-descope-auth psycopg2-binary &&
+        mlflow server --app-name descope-auth --host 0.0.0.0 --port 5000
+      "
+    environment:
+      # Descope configuration
+      - DESCOPE_PROJECT_ID=${DESCOPE_PROJECT_ID:?DESCOPE_PROJECT_ID not set}
+      - DESCOPE_FLOW_ID=${DESCOPE_FLOW_ID:-sign-up-or-in}
+      - DESCOPE_ADMIN_ROLES=${DESCOPE_ADMIN_ROLES:-admin,mlflow-admin}
+      
+      # MLflow with PostgreSQL
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow_password@postgres:5432/mlflow
+      - MLFLOW_ARTIFACT_ROOT=/mlflow/mlartifacts
+    
+    ports:
+      - "5000:5000"
+    
+    volumes:
+      - mlflow-artifacts:/mlflow/mlartifacts
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/auth/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    driver: local
+  mlflow-artifacts:
+    driver: local
