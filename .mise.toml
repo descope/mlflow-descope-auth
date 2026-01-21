@@ -1,0 +1,5 @@
+[env]
+DESCOPE_FLOW_ID = "sign-up-or-in"
+DESCOPE_REDIRECT_URL = "/"
+MLFLOW_BACKEND_STORE_URI = "sqlite:///mlflow.db"
+MLFLOW_ARTIFACT_ROOT = "./mlartifacts"

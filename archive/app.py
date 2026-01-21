@@ -4,12 +4,9 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from asgiref.wsgi import WsgiToAsgi
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 # Import MLflow Flask app
 from mlflow.server import app as mlflow_flask_app
-from mlflow.version import VERSION
 
 from .auth_routes import router as auth_router
 from .client import get_descope_client

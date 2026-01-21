@@ -6,7 +6,7 @@ This plugin is an **MLflow app plugin** that wraps the MLflow Flask application 
 
 ### Component Stack
 
-```
+```txt
 ┌─────────────────────────────────────────┐
 │         FastAPI Application             │  <- Entry point
 │  (mlflow_descope_auth.app:app)          │
@@ -36,14 +36,16 @@ This plugin is an **MLflow app plugin** that wraps the MLflow Flask application 
 ### Authentication Flow
 
 1. **Unauthenticated Request**
-   ```
+
+   ```python
    User → FastAPI → AuthenticationMiddleware
         → No session found
         → RedirectResponse("/auth/login")
    ```
 
 2. **Login Flow**
-   ```
+
+   ```txt
    User → /auth/login
         → HTML with <descope-wc> component
         → User authenticates (OAuth/SAML/etc)
@@ -53,7 +55,8 @@ This plugin is an **MLflow app plugin** that wraps the MLflow Flask application 
    ```
 
 3. **Authenticated Request**
-   ```
+
+   ```txt
    User → FastAPI → AuthenticationMiddleware
         → Extract tokens from cookies
         → Validate with Descope SDK
@@ -68,29 +71,34 @@ This plugin is an **MLflow app plugin** that wraps the MLflow Flask application 
 ### Key Components
 
 #### 1. `app.py` - Application Factory
+
 - Creates FastAPI app
 - Adds authentication middleware
 - Registers auth routes
 - **Mounts MLflow Flask app at "/"**
 
 #### 2. `middleware.py` - Session Validation
+
 - Extracts session tokens from cookies
 - Validates with Descope SDK
 - Auto-refreshes expired tokens
 - Attaches user info to request
 
 #### 3. `wsgi_middleware.py` - ASGI ↔ WSGI Bridge
+
 - Extracts auth from FastAPI request
 - Injects into Flask's WSGI environ
 - Sets `REMOTE_USER` for MLflow compatibility
 
 #### 4. `auth_routes.py` - Authentication Endpoints
+
 - `/auth/login` - Descope web component
 - `/auth/logout` - Clear session cookies
 - `/auth/user` - Get current user info
 - `/auth/health` - Health check
 
 #### 5. `client.py` - Descope SDK Wrapper
+
 - Session validation
 - Token refresh
 - User info extraction
@@ -136,13 +144,13 @@ Without MLflow, the plugin cannot function as it wraps MLflow's Flask app.
 
 ### Comparison: Descope vs OIDC Plugin
 
-| Aspect | mlflow-oidc-auth | mlflow-descope-auth |
-|--------|------------------|---------------------|
-| Auth Provider | Generic OIDC | Descope (OIDC + more) |
-| Configuration | Discovery URL, Client ID/Secret | Project ID, Flow ID |
-| Auth Methods | Depends on OIDC provider | Any (configured in Descope Console) |
-| Session Mgmt | OIDC tokens | Descope SDK validation |
-| Integration | Flask hooks + WSGI middleware | Same pattern |
-| Complexity | ~2000 LOC | ~500 LOC (Flow-based) |
+| Aspect        | mlflow-oidc-auth                | mlflow-descope-auth                 |
+| ------------- | ------------------------------- | ----------------------------------- |
+| Auth Provider | Generic OIDC                    | Descope (OIDC + more)               |
+| Configuration | Discovery URL, Client ID/Secret | Project ID, Flow ID                 |
+| Auth Methods  | Depends on OIDC provider        | Any (configured in Descope Console) |
+| Session Mgmt  | OIDC tokens                     | Descope SDK validation              |
+| Integration   | Flask hooks + WSGI middleware   | Same pattern                        |
+| Complexity    | ~2000 LOC                       | ~500 LOC (Flow-based)               |
 
 Both follow the same architectural pattern of wrapping MLflow's Flask app.

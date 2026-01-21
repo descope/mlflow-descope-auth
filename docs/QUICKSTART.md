@@ -68,6 +68,7 @@ mlflow server --app-name descope-auth --host 0.0.0.0 --port 5000
 By default, all authenticated users have READ access. To grant admin privileges:
 
 1. In your `.env` file, add:
+
    ```bash
    DESCOPE_ADMIN_ROLES=admin,mlflow-admin
    ```
@@ -113,7 +114,7 @@ mlflow server \
 Create `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   mlflow:
@@ -147,7 +148,8 @@ DESCOPE_PROJECT_ID=P2XXXXX docker-compose up
 
 **Problem**: Web component loads but authentication doesn't work
 
-**Solution**: 
+**Solution**:
+
 1. Check that your `DESCOPE_PROJECT_ID` is correct
 2. Ensure your flow exists in Descope Console
 3. Check browser console for errors
@@ -158,6 +160,7 @@ DESCOPE_PROJECT_ID=P2XXXXX docker-compose up
 **Problem**: After successful authentication, you're redirected back to login
 
 **Solution**:
+
 1. Clear browser cookies
 2. Check that cookies are enabled
 3. If using HTTPS, ensure your redirect URL uses HTTPS too
@@ -168,6 +171,7 @@ DESCOPE_PROJECT_ID=P2XXXXX docker-compose up
 **Problem**: MLflow fails to start
 
 **Solution**:
+
 ```bash
 # Make sure .env file exists in the same directory
 cat .env
@@ -182,6 +186,7 @@ mlflow server --app-name descope-auth
 **Problem**: `Address already in use` error
 
 **Solution**:
+
 ```bash
 # Use a different port
 mlflow server --app-name descope-auth --port 5001

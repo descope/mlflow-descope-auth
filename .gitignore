@@ -42,6 +42,10 @@ htmlcov/
 .mypy_cache/
 .ruff_cache/
 
+# Tool managers
+.mise.local.toml
+.uv_cache/
+
 # Environment
 .env
 .env.local

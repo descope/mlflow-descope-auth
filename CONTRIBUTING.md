@@ -6,16 +6,21 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 1. Fork the repository
 2. Clone your fork:
+
    ```bash
    git clone https://github.com/YOUR_USERNAME/mlflow-descope-auth.git
    cd mlflow-descope-auth
    ```
+
 3. Create a virtual environment:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
+
 4. Install in development mode:
+
    ```bash
    pip install -e ".[dev]"
    ```
@@ -23,6 +28,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 ## Development Workflow
 
 1. Create a feature branch:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -30,23 +36,27 @@ Thank you for your interest in contributing! This document provides guidelines a
 2. Make your changes
 
 3. Run tests:
+
    ```bash
    pytest
    ```
 
 4. Format code:
+
    ```bash
    black mlflow_descope_auth tests
    ruff check mlflow_descope_auth tests --fix
    ```
 
 5. Commit your changes:
+
    ```bash
    git add .
    git commit -m "feat: add amazing feature"
    ```
 
 6. Push to your fork:
+
    ```bash
    git push origin feature/your-feature-name
    ```
@@ -66,6 +76,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 - Write tests for new features
 - Maintain >80% code coverage
 - Run tests before submitting PR:
+
   ```bash
   pytest --cov=mlflow_descope_auth
   ```
@@ -73,6 +84,7 @@ Thank you for your interest in contributing! This document provides guidelines a
 ## Commit Messages
 
 Follow conventional commits:
+
 - `feat:` - New feature
 - `fix:` - Bug fix
 - `docs:` - Documentation changes

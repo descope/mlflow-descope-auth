@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mlflow:
@@ -12,30 +12,30 @@ services:
     environment:
       # Required: Set your Descope Project ID
       - DESCOPE_PROJECT_ID=${DESCOPE_PROJECT_ID:?DESCOPE_PROJECT_ID not set}
-      
+
       # Optional: Descope configuration
       - DESCOPE_FLOW_ID=${DESCOPE_FLOW_ID:-sign-up-or-in}
       - DESCOPE_REDIRECT_URL=${DESCOPE_REDIRECT_URL:-/}
       - DESCOPE_ADMIN_ROLES=${DESCOPE_ADMIN_ROLES:-admin,mlflow-admin}
       - DESCOPE_DEFAULT_PERMISSION=${DESCOPE_DEFAULT_PERMISSION:-READ}
-      
+
       # MLflow configuration
       - MLFLOW_BACKEND_STORE_URI=sqlite:////mlflow/mlflow.db
       - MLFLOW_ARTIFACT_ROOT=/mlflow/mlartifacts
-    
+
     ports:
       - "5000:5000"
-    
+
     volumes:
       - mlflow-data:/mlflow
-    
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/auth/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
+
     restart: unless-stopped
 
 volumes:

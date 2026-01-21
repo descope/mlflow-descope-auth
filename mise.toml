@@ -1,0 +1,127 @@
+[tools]
+python = "3.11"
+uv = "latest"
+
+[env]
+_.python.venv = { path = ".venv", create = true }
+
+[tasks.install]
+description = "Install dependencies with uv"
+run = "uv sync --extra dev"
+
+[tasks.lint]
+description = "Run ruff linter"
+run = "uv run ruff check mlflow_descope_auth tests examples"
+
+[tasks.format]
+description = "Run ruff formatter"
+run = "uv run ruff format mlflow_descope_auth tests examples"
+
+[tasks.check]
+description = "Run all checks (lint + format + type)"
+run = [
+    "uv run ruff check mlflow_descope_auth tests examples",
+    "uv run ruff format --check mlflow_descope_auth tests examples",
+    "uv run mypy mlflow_descope_auth"
+]
+
+[tasks.fix]
+description = "Auto-fix all issues"
+run = [
+    "uv run ruff format mlflow_descope_auth tests examples",
+    "uv run ruff check --fix mlflow_descope_auth tests examples"
+]
+
+[tasks.test]
+description = "Run tests with coverage"
+run = "uv run pytest --cov=mlflow_descope_auth --cov-report=term-missing"
+
+[tasks.test-quick]
+description = "Run tests without coverage"
+run = "uv run pytest"
+
+[tasks.clean]
+description = "Remove generated files"
+run = """
+rm -rf build/ dist/ *.egg-info .pytest_cache .ruff_cache .mypy_cache htmlcov/ .coverage .uv_cache
+find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+find . -type f -name "*.pyc" -delete
+"""
+
+[tasks.pre-commit-install]
+description = "Install pre-commit hooks"
+run = [
+    "uv run pip install pre-commit",
+    "uv run pre-commit install"
+]
+
+[tasks.pre-commit]
+description = "Run pre-commit on all files"
+run = "uv run pre-commit run --all-files"
+
+[tasks.dev]
+description = "Start MLflow server with Descope plugin enabled"
+env = { MLFLOW_TRACKING_AUTH = "descope" }
+run = """
+if [ -z "$DESCOPE_SESSION_TOKEN" ]; then
+    echo "Warning: DESCOPE_SESSION_TOKEN not set"
+    echo "Plugin will be loaded but authentication will fail without tokens"
+fi
+uv run mlflow server --host 0.0.0.0 --port 5000
+"""
+
+[tasks.verify-plugin]
+description = "Verify plugin is registered correctly"
+run = """
+uv run python -c '
+import sys
+if sys.version_info >= (3, 10):
+    from importlib.metadata import entry_points
+    auth_eps = [ep.name for ep in entry_points(group="mlflow.request_auth_provider")]
+    header_eps = [ep.name for ep in entry_points(group="mlflow.request_header_provider")]
+    context_eps = [ep.name for ep in entry_points(group="mlflow.run_context_provider")]
+else:
+    import pkg_resources
+    auth_eps = [ep.name for ep in pkg_resources.iter_entry_points("mlflow.request_auth_provider")]
+    header_eps = [ep.name for ep in pkg_resources.iter_entry_points("mlflow.request_header_provider")]
+    context_eps = [ep.name for ep in pkg_resources.iter_entry_points("mlflow.run_context_provider")]
+
+print("MLflow Plugin Entry Points:")
+print(f"  Auth Provider: {\"descope\" if \"descope\" in auth_eps else \"NOT FOUND\"}")
+print(f"  Header Provider: {\"descope\" if \"descope\" in header_eps else \"NOT FOUND\"}")
+print(f"  Context Provider: {\"descope\" if \"descope\" in context_eps else \"NOT FOUND\"}")
+'
+"""
+
+[tasks.demo]
+description = "Run a demo MLflow tracking session with plugin"
+env = { MLFLOW_TRACKING_AUTH = "descope" }
+run = """
+if [ -z "$DESCOPE_SESSION_TOKEN" ]; then
+    echo "Error: DESCOPE_SESSION_TOKEN required for demo"
+    echo ""
+    echo "Set these environment variables first:"
+    echo "  export DESCOPE_PROJECT_ID='P2XXXXX'"
+    echo "  export DESCOPE_SESSION_TOKEN='your-token'"
+    echo "  export DESCOPE_REFRESH_TOKEN='your-refresh-token'"
+    exit 1
+fi
+
+echo "Running demo with Descope authentication..."
+uv run python -c '
+import mlflow
+import os
+
+print(f"MLflow Tracking URI: {mlflow.get_tracking_uri()}")
+print(f"Auth Provider: descope (via MLFLOW_TRACKING_AUTH)")
+
+with mlflow.start_run(run_name="descope-plugin-demo"):
+    mlflow.log_param("plugin", "mlflow-descope-auth")
+    mlflow.log_metric("demo_metric", 1.0)
+    print("Run logged successfully with Descope authentication!")
+'
+"""
+
+[tasks.ci]
+description = "Run CI checks"
+depends = ["check", "test", "verify-plugin"]
