@@ -1,0 +1,14 @@
+# Test fixtures and mock data
+tests/conftest.py
+tests/test_*.py
+
+# Example configuration files
+.env.example
+examples/
+
+# Documentation
+README.md
+docs/
+
+# Archive directory
+archive/

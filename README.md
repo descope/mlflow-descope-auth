@@ -1,6 +1,6 @@
 # MLflow Descope Authentication Plugin
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 A simple, standards-compliant authentication plugin for [MLflow](https://mlflow.org/) using [Descope](https://www.descope.com/).

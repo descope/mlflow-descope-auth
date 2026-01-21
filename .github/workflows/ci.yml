@@ -49,7 +49,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,6 +67,8 @@ jobs:
 
       - name: Run tests
         run: uv run pytest --cov=mlflow_descope_auth --cov-report=xml --cov-report=term-missing
+        env:
+          DESCOPE_PROJECT_ID: test_project_id
 
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
