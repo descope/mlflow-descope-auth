@@ -33,6 +33,7 @@ dependencies = [
     "jinja2>=3.1.0",
     "python-dotenv>=1.0.0",
     "pyjwt>=2.8.0",
+    "asgiref>=3.7.0",
 ]
 
 [project.optional-dependencies]

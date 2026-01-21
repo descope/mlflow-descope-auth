@@ -161,18 +161,44 @@ Configure admin roles via `DESCOPE_ADMIN_ROLES` environment variable.
 
 ```bash
 # Clone repository
-git clone https://github.com/mlflow-descope/mlflow-descope-auth.git
+git clone https://github.com/descope/mlflow-descope-auth.git
 cd mlflow-descope-auth
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install with dev dependencies
-pip install -e ".[dev]"
+# Install dependencies with uv
+uv sync --extra dev
+```
 
-# Install pre-commit hooks
-pre-commit install
+### Running Tests
+
+```bash
+# Run all tests with coverage
+uv run pytest
+
+# Run specific test file
+uv run pytest tests/test_config.py
+
+# Run with verbose output
+uv run pytest -v
+
+# Generate coverage report
+uv run pytest --cov=mlflow_descope_auth --cov-report=html
+open htmlcov/index.html
+```
+
+### Code Quality
+
+```bash
+# Format code
+uv run black mlflow_descope_auth tests
+
+# Lint code
+uv run ruff check mlflow_descope_auth tests
+
+# Type checking
+uv run mypy mlflow_descope_auth
 ```
 
 ### Running Tests
