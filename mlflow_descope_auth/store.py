@@ -1,7 +1,7 @@
 """User store adapter for MLflow integration."""
 
 import logging
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .client import get_descope_client
 from .config import get_config
@@ -158,7 +158,7 @@ class DescopeUserStore:
 
 
 # Global store instance
-_store: DescopeUserStore | None = None
+_store: Optional[DescopeUserStore] = None
 
 
 def get_user_store() -> DescopeUserStore:
