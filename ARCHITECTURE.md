@@ -2,155 +2,182 @@
 
 ## How MLflow Descope Auth Works
 
-This plugin is an **MLflow app plugin** that wraps the MLflow Flask application with Descope authentication.
+This plugin uses **MLflow's standard plugin system** to add Descope authentication to MLflow clients. It does NOT wrap or modify the MLflow server - it extends the client-side behavior.
 
-### Component Stack
+### Plugin Architecture
 
 ```txt
 ┌─────────────────────────────────────────┐
-│         FastAPI Application             │  <- Entry point
-│  (mlflow_descope_auth.app:app)          │
+│           MLflow Client                 │
+│  (mlflow.set_tracking_uri(...))         │
 ├─────────────────────────────────────────┤
-│  Authentication Middleware              │  <- Validates Descope sessions
-│  - Checks cookies (DS, DSR)             │
-│  - Validates with Descope SDK           │
-│  - Auto-refreshes expired tokens        │
-│  - Sets user info in request.state      │
+│  DescopeAuthProvider                    │  ← Adds Bearer token to requests
+│  (mlflow.request_auth_provider)         │
 ├─────────────────────────────────────────┤
-│  Auth Routes (/auth/*)                  │  <- Login, logout, health
-│  - /auth/login (Descope web component)  │
-│  - /auth/logout                         │
-│  - /auth/user                           │
-│  - /auth/health                         │
+│  DescopeHeaderProvider                  │  ← Injects user context headers
+│  (mlflow.request_header_provider)       │
 ├─────────────────────────────────────────┤
-│  AuthAwareWSGIMiddleware                │  <- Bridges FastAPI ↔ Flask
-│  - Extracts auth from ASGI scope        │
-│  - Injects into WSGI environ            │
-│  - Sets REMOTE_USER for MLflow          │
+│  DescopeContextProvider                 │  ← Auto-tags runs with user info
+│  (mlflow.run_context_provider)          │
 ├─────────────────────────────────────────┤
-│  MLflow Flask Application               │  <- The actual MLflow server
-│  (from mlflow.server import app)        │
+│           HTTP Request                  │
+│  Authorization: Bearer <descope-token>  │
+│  X-Descope-User-ID: ...                 │
+│  X-Descope-Email: ...                   │
 └─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│         MLflow Server                   │  ← Unmodified, standard MLflow
+│  (receives authenticated requests)      │
+└─────────────────────────────────────────┘
+```
+
+### Entry Points
+
+The plugin registers three MLflow entry points in `pyproject.toml`:
+
+```toml
+[project.entry-points."mlflow.request_auth_provider"]
+descope = "mlflow_descope_auth.auth_provider:DescopeAuthProvider"
+
+[project.entry-points."mlflow.request_header_provider"]
+descope = "mlflow_descope_auth.header_provider:DescopeHeaderProvider"
+
+[project.entry-points."mlflow.run_context_provider"]
+descope = "mlflow_descope_auth.context_provider:DescopeContextProvider"
 ```
 
 ### Authentication Flow
 
-1. **Unauthenticated Request**
+1. **Plugin Activation**
 
-   ```python
-   User → FastAPI → AuthenticationMiddleware
-        → No session found
-        → RedirectResponse("/auth/login")
+   ```bash
+   export MLFLOW_TRACKING_AUTH=descope
    ```
 
-2. **Login Flow**
+   MLflow discovers and loads the `descope` auth provider.
+
+2. **Token Injection**
 
    ```txt
-   User → /auth/login
-        → HTML with <descope-wc> component
-        → User authenticates (OAuth/SAML/etc)
-        → Web component gets JWT tokens
-        → JavaScript sets cookies (DS, DSR)
-        → Redirect to "/"
+   Client calls mlflow.log_metric(...)
+        → DescopeAuthProvider.get_auth() called
+        → Returns callable that adds Authorization header
+        → Request sent with: Authorization: Bearer <DESCOPE_SESSION_TOKEN>
    ```
 
-3. **Authenticated Request**
+3. **Header Injection**
 
    ```txt
-   User → FastAPI → AuthenticationMiddleware
-        → Extract tokens from cookies
-        → Validate with Descope SDK
-        → Set user info in request.state
-        → Continue to next middleware
-        → AuthAwareWSGIMiddleware
-        → Inject auth into WSGI environ
-        → MLflow Flask app
-        → MLflow processes request with user context
+   DescopeHeaderProvider.request_headers() called
+        → Decodes JWT token (without validation)
+        → Extracts user info (sub, email, roles, etc.)
+        → Returns headers: X-Descope-User-ID, X-Descope-Email, etc.
+   ```
+
+4. **Run Tagging**
+
+   ```txt
+   mlflow.start_run() called
+        → DescopeContextProvider.in_context() → True (if token present)
+        → DescopeContextProvider.tags() called
+        → Returns tags: descope.user_id, descope.email, etc.
+        → Tags automatically added to run
    ```
 
 ### Key Components
 
-#### 1. `app.py` - Application Factory
+#### 1. `auth_provider.py` - Request Authentication
 
-- Creates FastAPI app
-- Adds authentication middleware
-- Registers auth routes
-- **Mounts MLflow Flask app at "/"**
+```python
+class DescopeAuthProvider(RequestAuthProvider):
+    def get_name(self) -> str:
+        return "descope"
+    
+    def get_auth(self) -> Callable:
+        # Returns function that adds Bearer token to requests
+        token = os.environ.get("DESCOPE_SESSION_TOKEN")
+        return lambda: ("Bearer", token)
+```
 
-#### 2. `middleware.py` - Session Validation
+#### 2. `header_provider.py` - Request Headers
 
-- Extracts session tokens from cookies
-- Validates with Descope SDK
-- Auto-refreshes expired tokens
-- Attaches user info to request
+```python
+class DescopeHeaderProvider(RequestHeaderProvider):
+    def in_context(self) -> bool:
+        return bool(os.environ.get("DESCOPE_SESSION_TOKEN"))
+    
+    def request_headers(self) -> Dict[str, str]:
+        # Decode JWT and return user info as headers
+        return {
+            "X-Descope-User-ID": user_id,
+            "X-Descope-Email": email,
+            # ...
+        }
+```
 
-#### 3. `wsgi_middleware.py` - ASGI ↔ WSGI Bridge
+#### 3. `context_provider.py` - Run Tagging
 
-- Extracts auth from FastAPI request
-- Injects into Flask's WSGI environ
-- Sets `REMOTE_USER` for MLflow compatibility
+```python
+class DescopeContextProvider(RunContextProvider):
+    def in_context(self) -> bool:
+        return bool(os.environ.get("DESCOPE_SESSION_TOKEN"))
+    
+    def tags(self) -> Dict[str, str]:
+        # Return tags to add to every run
+        return {
+            "descope.user_id": user_id,
+            "descope.email": email,
+            # ...
+        }
+```
 
-#### 4. `auth_routes.py` - Authentication Endpoints
+#### 4. `client.py` - Descope SDK Wrapper
 
-- `/auth/login` - Descope web component
-- `/auth/logout` - Clear session cookies
-- `/auth/user` - Get current user info
-- `/auth/health` - Health check
+- Session validation with Descope API
+- Token refresh handling
+- User info extraction from validated tokens
 
-#### 5. `client.py` - Descope SDK Wrapper
+#### 5. `config.py` - Configuration
 
-- Session validation
-- Token refresh
-- User info extraction
-- Role/permission checking
+- Environment variable management
+- Default values and validation
 
 ### Why This Architecture?
 
-1. **Separation of Concerns**
-   - FastAPI handles auth
-   - MLflow handles ML operations
-   - Clean middleware layer bridges them
+1. **Non-Invasive**
+   - Server runs unmodified
+   - All logic is client-side
+   - No middleware, no wrapping
 
-2. **No MLflow Modifications**
-   - Uses MLflow as-is via `from mlflow.server import app`
-   - Auth is completely external
-   - Easy to upgrade MLflow versions
+2. **Standard MLflow Integration**
+   - Uses official plugin entry points
+   - Works with any MLflow server
+   - Future-proof against MLflow updates
 
-3. **Standard WSGI Integration**
-   - Uses `REMOTE_USER` environ variable
-   - Compatible with MLflow's auth expectations
-   - Works with existing MLflow features
+3. **Minimal Dependencies**
+   - Only `descope` SDK required
+   - No FastAPI, no ASGI/WSGI complexity
 
-4. **Plugin System Integration**
-   - Entry point: `mlflow.app`
-   - Usage: `mlflow server --app-name descope-auth`
-   - MLflow automatically discovers and loads it
+4. **Simple Configuration**
+   - Just environment variables
+   - No config files needed
+   - Works in any environment (local, Docker, K8s)
 
-### Dependencies
+### Comparison with Other Approaches
 
-**Critical:** This plugin requires MLflow to be installed!
+| Aspect              | Simple Plugin (This)      | Server Wrapper Approach     |
+| ------------------- | ------------------------- | --------------------------- |
+| **Where it runs**   | Client-side               | Server-side                 |
+| **Server changes**  | None                      | Wraps entire server         |
+| **Complexity**      | ~300 LOC                  | ~2000+ LOC                  |
+| **Dependencies**    | descope SDK only          | FastAPI, ASGI, middleware   |
+| **MLflow version**  | Any                       | May break on updates        |
+| **Deployment**      | pip install               | Custom server setup         |
 
-```toml
-dependencies = [
-    "mlflow>=2.0.0",      # ← Required! We import from mlflow.server
-    "descope>=0.9.0",     # Descope SDK
-    "fastapi>=0.100.0",   # FastAPI framework
-    "asgiref>=3.7.0",     # ASGI ↔ WSGI adapter
-    # ... other deps
-]
-```
+### Security Considerations
 
-Without MLflow, the plugin cannot function as it wraps MLflow's Flask app.
-
-### Comparison: Descope vs OIDC Plugin
-
-| Aspect        | mlflow-oidc-auth                | mlflow-descope-auth                 |
-| ------------- | ------------------------------- | ----------------------------------- |
-| Auth Provider | Generic OIDC                    | Descope (OIDC + more)               |
-| Configuration | Discovery URL, Client ID/Secret | Project ID, Flow ID                 |
-| Auth Methods  | Depends on OIDC provider        | Any (configured in Descope Console) |
-| Session Mgmt  | OIDC tokens                     | Descope SDK validation              |
-| Integration   | Flask hooks + WSGI middleware   | Same pattern                        |
-| Complexity    | ~2000 LOC                       | ~500 LOC (Flow-based)               |
-
-Both follow the same architectural pattern of wrapping MLflow's Flask app.
+- Tokens are passed via environment variables (not committed to code)
+- JWT decoding in header/context providers is for extracting claims only
+- Actual token validation should happen server-side
+- For server-side validation, use MLflow's built-in auth or a reverse proxy
