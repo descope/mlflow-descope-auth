@@ -1,7 +1,7 @@
 """Descope SDK wrapper for MLflow integration."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from descope import AuthException, DescopeClient
 
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class DescopeClientWrapper:
     """Wrapper around Descope SDK for MLflow authentication."""
 
-    def __init__(self, project_id: str | None = None, management_key: str | None = None):
+    def __init__(self, project_id: Optional[str] = None, management_key: Optional[str] = None):
         """Initialize Descope client.
 
         Args:
@@ -32,7 +32,7 @@ class DescopeClientWrapper:
         logger.info(f"Initialized Descope client for project: {self.project_id}")
 
     def validate_session(
-        self, session_token: str, refresh_token: str | None = None
+        self, session_token: str, refresh_token: Optional[str] = None
     ) -> Dict[str, Any]:
         """Validate session token and optionally refresh if expired.
 
@@ -195,7 +195,7 @@ class DescopeClientWrapper:
 
 
 # Global client instance
-_client: DescopeClientWrapper | None = None
+_client: Optional[DescopeClientWrapper] = None
 
 
 def get_descope_client() -> DescopeClientWrapper:

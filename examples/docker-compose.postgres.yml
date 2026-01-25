@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -32,28 +32,28 @@ services:
       - DESCOPE_PROJECT_ID=${DESCOPE_PROJECT_ID:?DESCOPE_PROJECT_ID not set}
       - DESCOPE_FLOW_ID=${DESCOPE_FLOW_ID:-sign-up-or-in}
       - DESCOPE_ADMIN_ROLES=${DESCOPE_ADMIN_ROLES:-admin,mlflow-admin}
-      
+
       # MLflow with PostgreSQL
       - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow_password@postgres:5432/mlflow
       - MLFLOW_ARTIFACT_ROOT=/mlflow/mlartifacts
-    
+
     ports:
       - "5000:5000"
-    
+
     volumes:
       - mlflow-artifacts:/mlflow/mlartifacts
-    
+
     depends_on:
       postgres:
         condition: service_healthy
-    
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/auth/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
+
     restart: unless-stopped
 
 volumes:

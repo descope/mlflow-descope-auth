@@ -2,7 +2,7 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional
 
 from dotenv import load_dotenv
 
@@ -18,7 +18,7 @@ class Config:
     DESCOPE_PROJECT_ID: str
 
     # Optional - Descope settings
-    DESCOPE_MANAGEMENT_KEY: str | None = None
+    DESCOPE_MANAGEMENT_KEY: Optional[str] = None
     DESCOPE_FLOW_ID: str = "sign-up-or-in"
     DESCOPE_REDIRECT_URL: str = "/"
     DESCOPE_WEB_COMPONENT_VERSION: str = "3.54.0"
@@ -96,7 +96,7 @@ class Config:
 
 
 # Global config instance (initialized when module is imported)
-_config: Config | None = None
+_config: Optional[Config] = None
 
 
 def get_config() -> Config:

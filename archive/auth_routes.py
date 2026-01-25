@@ -3,11 +3,10 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from .client import get_descope_client
 from .config import get_config
 
 logger = logging.getLogger(__name__)

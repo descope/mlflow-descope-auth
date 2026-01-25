@@ -7,7 +7,7 @@ name = "mlflow-descope-auth"
 version = "0.1.0"
 description = "Descope authentication plugin for MLflow using Flow-based auth pattern"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "Apache-2.0"}
 authors = [
     {name = "MLflow Descope Auth Contributors"}
@@ -18,33 +18,35 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
 ]
 
 dependencies = [
     "mlflow>=2.0.0",
     "descope>=0.9.0",
-    "fastapi>=0.100.0",
-    "uvicorn[standard]>=0.23.0",
-    "jinja2>=3.1.0",
     "python-dotenv>=1.0.0",
-    "pyjwt>=2.8.0",
 ]
 
 [project.optional-dependencies]
-dev = [
+test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.11.0",
     "pytest-asyncio>=0.21.0",
+]
+lint = [
     "black>=23.7.0",
     "ruff>=0.0.285",
     "mypy>=1.5.0",
+]
+dev = [
+    "mlflow-descope-auth[test,lint]",
     "httpx>=0.24.0",
+    "hatch>=1.9.0",
 ]
 
 [project.urls]
@@ -53,48 +55,85 @@ Documentation = "https://github.com/descope/mlflow-descope-auth#readme"
 Repository = "https://github.com/descope/mlflow-descope-auth"
 Issues = "https://github.com/descope/mlflow-descope-auth/issues"
 
-[project.entry-points."mlflow.app"]
-descope-auth = "mlflow_descope_auth.app:app"
+[project.entry-points."mlflow.request_auth_provider"]
+descope = "mlflow_descope_auth.auth_provider:DescopeAuthProvider"
+
+[project.entry-points."mlflow.request_header_provider"]
+descope = "mlflow_descope_auth.header_provider:DescopeHeaderProvider"
+
+[project.entry-points."mlflow.run_context_provider"]
+descope = "mlflow_descope_auth.context_provider:DescopeContextProvider"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["mlflow_descope_auth*"]
 exclude = ["tests*"]
 
-[tool.setuptools.package-data]
-mlflow_descope_auth = ["templates/*.html"]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=mlflow_descope_auth --cov-report=term-missing --cov-report=html"
+addopts = "-v"
 
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py39', 'py310', 'py311', 'py312', 'py313']
 include = '\.pyi?$'
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
-select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-]
-ignore = [
-    "E501", # line too long (handled by black)
-    "B008", # do not perform function calls in argument defaults
-    "C901", # too complex
+target-version = "py39"
+
+# Allow autofix for all enabled rules (when `--fix` is provided)
+lint.fixable = ["ALL"]
+lint.unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+# Test files can have additional freedoms
+"tests/**/*.py" = [
+    "S101",    # Assert usage is OK in tests
+    "PLR2004", # Magic values are OK in tests
+    "ANN",     # Type annotations not required in tests
+    "D",       # Docstrings not required in tests
 ]
 
+# Example files don't need full typing
+"examples/**/*.py" = [
+    "T20",     # Print statements OK in examples
+    "ANN",     # Type annotations not required
+    "D",       # Docstrings not required
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["mlflow_descope_auth"]
+force-single-line = false
+lines-after-imports = 2
+split-on-trailing-comma = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with spaces, not tabs
+indent-style = "space"
+
+# Respect magic trailing commas
+skip-magic-trailing-comma = false
+
+# Auto-detect line ending
+line-ending = "auto"
+
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -104,3 +143,50 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
+exclude = [
+    "^archive/",
+]
+
+[tool.hatch.version]
+path = "mlflow_descope_auth/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/mlflow_descope_auth",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mlflow_descope_auth"]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.hatch.envs.test]
+features = ["test"]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+[tool.hatch.envs.test.scripts]
+run = "pytest {args:tests}"
+run-cov = "pytest --cov=mlflow_descope_auth --cov-report=term-missing --cov-report=html {args:tests}"
+run-cov-xml = "pytest --cov=mlflow_descope_auth --cov-report=xml {args:tests}"
+
+[tool.hatch.envs.lint]
+detached = true
+features = ["lint"]
+
+[tool.hatch.envs.lint.scripts]
+style = [
+    "ruff check mlflow_descope_auth tests examples",
+    "black --check mlflow_descope_auth tests examples",
+]
+fmt = [
+    "black mlflow_descope_auth tests examples",
+    "ruff check --fix mlflow_descope_auth tests examples",
+]
+typing = "mypy mlflow_descope_auth"
+all = ["style", "typing"]

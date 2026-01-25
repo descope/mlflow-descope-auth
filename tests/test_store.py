@@ -1,6 +1,6 @@
 """Tests for user store."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -27,6 +27,16 @@ def test_get_user_from_jwt(user_store, mock_jwt_response):
 
 def test_get_admin_user_from_jwt(user_store, mock_admin_jwt_response):
     """Test extracting admin user from JWT response."""
+    user_store.descope_client.extract_user_claims.return_value = {
+        "username": "admin@example.com",
+        "email": "admin@example.com",
+        "name": "Admin User",
+        "roles": ["admin", "user"],
+        "permissions": ["mlflow:manage", "mlflow:read", "mlflow:write"],
+        "tenants": {},
+        "user_id": "admin_user_id",
+    }
+
     user = user_store.get_user_from_jwt(mock_admin_jwt_response)
 
     assert user["username"] == "admin@example.com"

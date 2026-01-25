@@ -5,6 +5,9 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Import MLflow Flask app
+from mlflow.server import app as mlflow_flask_app
+
 from .auth_routes import router as auth_router
 from .client import get_descope_client
 from .config import get_config
@@ -64,15 +67,11 @@ def create_app() -> FastAPI:
     # Include authentication routes
     app.include_router(auth_router)
 
-    # Root endpoint (protected by auth middleware)
-    @app.get("/")
-    async def root():
-        """Root endpoint - redirects to MLflow UI."""
-        return {
-            "message": "MLflow with Descope Authentication",
-            "docs": "/docs",
-            "health": "/auth/health",
-        }
+    # Mount MLflow Flask app at root with auth-aware middleware
+    from .wsgi_middleware import AuthAwareWSGIMiddleware
+
+    app.mount("/", AuthAwareWSGIMiddleware(mlflow_flask_app))
+    logger.info("Mounted MLflow Flask app at / with auth-aware WSGI middleware")
 
     logger.info("MLflow Descope Auth plugin initialized successfully")
 
