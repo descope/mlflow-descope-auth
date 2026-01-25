@@ -32,15 +32,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
+test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.11.0",
     "pytest-asyncio>=0.21.0",
+]
+lint = [
     "black>=23.7.0",
     "ruff>=0.0.285",
     "mypy>=1.5.0",
+]
+dev = [
+    "mlflow-descope-auth[test,lint]",
     "httpx>=0.24.0",
+    "hatch>=1.9.0",
 ]
 
 [project.urls]
@@ -70,7 +76,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=mlflow_descope_auth --cov-report=term-missing --cov-report=html"
+addopts = "-v"
 
 [tool.black]
 line-length = 100
@@ -140,3 +146,47 @@ warn_no_return = true
 exclude = [
     "^archive/",
 ]
+
+[tool.hatch.version]
+path = "mlflow_descope_auth/__init__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/mlflow_descope_auth",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["mlflow_descope_auth"]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.hatch.envs.test]
+features = ["test"]
+
+[[tool.hatch.envs.test.matrix]]
+python = ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+[tool.hatch.envs.test.scripts]
+run = "pytest {args:tests}"
+run-cov = "pytest --cov=mlflow_descope_auth --cov-report=term-missing --cov-report=html {args:tests}"
+run-cov-xml = "pytest --cov=mlflow_descope_auth --cov-report=xml {args:tests}"
+
+[tool.hatch.envs.lint]
+detached = true
+features = ["lint"]
+
+[tool.hatch.envs.lint.scripts]
+style = [
+    "ruff check mlflow_descope_auth tests examples",
+    "black --check mlflow_descope_auth tests examples",
+]
+fmt = [
+    "black mlflow_descope_auth tests examples",
+    "ruff check --fix mlflow_descope_auth tests examples",
+]
+typing = "mypy mlflow_descope_auth"
+all = ["style", "typing"]

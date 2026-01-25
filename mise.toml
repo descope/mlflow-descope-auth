@@ -1,5 +1,5 @@
 [tools]
-python = "3.11"
+python = "3.13"
 uv = "latest"
 
 [env]
@@ -77,19 +77,20 @@ uv run python -c '
 import sys
 if sys.version_info >= (3, 10):
     from importlib.metadata import entry_points
-    auth_eps = [ep.name for ep in entry_points(group="mlflow.request_auth_provider")]
-    header_eps = [ep.name for ep in entry_points(group="mlflow.request_header_provider")]
-    context_eps = [ep.name for ep in entry_points(group="mlflow.run_context_provider")]
 else:
-    import pkg_resources
-    auth_eps = [ep.name for ep in pkg_resources.iter_entry_points("mlflow.request_auth_provider")]
-    header_eps = [ep.name for ep in pkg_resources.iter_entry_points("mlflow.request_header_provider")]
-    context_eps = [ep.name for ep in pkg_resources.iter_entry_points("mlflow.run_context_provider")]
+    from importlib_metadata import entry_points
+
+auth_eps = [ep.name for ep in entry_points(group="mlflow.request_auth_provider")]
+header_eps = [ep.name for ep in entry_points(group="mlflow.request_header_provider")]
+context_eps = [ep.name for ep in entry_points(group="mlflow.run_context_provider")]
 
 print("MLflow Plugin Entry Points:")
-print(f"  Auth Provider: {\"descope\" if \"descope\" in auth_eps else \"NOT FOUND\"}")
-print(f"  Header Provider: {\"descope\" if \"descope\" in header_eps else \"NOT FOUND\"}")
-print(f"  Context Provider: {\"descope\" if \"descope\" in context_eps else \"NOT FOUND\"}")
+auth_status = "descope" if "descope" in auth_eps else "NOT FOUND"
+header_status = "descope" if "descope" in header_eps else "NOT FOUND"
+context_status = "descope" if "descope" in context_eps else "NOT FOUND"
+print(f"  Auth Provider: {auth_status}")
+print(f"  Header Provider: {header_status}")
+print(f"  Context Provider: {context_status}")
 '
 """
 
@@ -122,6 +123,30 @@ with mlflow.start_run(run_name="descope-plugin-demo"):
 '
 """
 
+[tasks.test-all]
+description = "Run tests on all Python versions (3.9-3.13) using Hatch"
+run = "uv run hatch test --all"
+
+[tasks.test-py39]
+description = "Run tests on Python 3.9"
+run = "uv run hatch test --python 3.9"
+
+[tasks.test-py310]
+description = "Run tests on Python 3.10"
+run = "uv run hatch test --python 3.10"
+
+[tasks.test-py311]
+description = "Run tests on Python 3.11"
+run = "uv run hatch test --python 3.11"
+
+[tasks.test-py312]
+description = "Run tests on Python 3.12"
+run = "uv run hatch test --python 3.12"
+
+[tasks.test-py313]
+description = "Run tests on Python 3.13"
+run = "uv run hatch test --python 3.13"
+
 [tasks.ci]
-description = "Run CI checks"
-depends = ["check", "test", "verify-plugin"]
+description = "Run CI checks including multi-Python testing"
+depends = ["check", "test-all", "verify-plugin"]

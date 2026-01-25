@@ -2,62 +2,34 @@
 
 import sys
 
+# Use importlib.metadata for all Python versions (available in 3.8+ via importlib_metadata backport)
+if sys.version_info >= (3, 10):
+    from importlib.metadata import entry_points
+else:
+    from importlib_metadata import entry_points
+
 
 class TestPluginEntryPoints:
     def test_auth_provider_entry_point(self):
-        if sys.version_info >= (3, 10):
-            from importlib.metadata import entry_points
-
-            eps = entry_points(group="mlflow.request_auth_provider")
-            names = [ep.name for ep in eps]
-        else:
-            import pkg_resources
-
-            eps = list(pkg_resources.iter_entry_points("mlflow.request_auth_provider"))
-            names = [ep.name for ep in eps]
+        eps = entry_points(group="mlflow.request_auth_provider")
+        names = [ep.name for ep in eps]
 
         assert "descope" in names, "descope auth provider not registered"
 
     def test_header_provider_entry_point(self):
-        if sys.version_info >= (3, 10):
-            from importlib.metadata import entry_points
-
-            eps = entry_points(group="mlflow.request_header_provider")
-            names = [ep.name for ep in eps]
-        else:
-            import pkg_resources
-
-            eps = list(pkg_resources.iter_entry_points("mlflow.request_header_provider"))
-            names = [ep.name for ep in eps]
+        eps = entry_points(group="mlflow.request_header_provider")
+        names = [ep.name for ep in eps]
 
         assert "descope" in names, "descope header provider not registered"
 
     def test_context_provider_entry_point(self):
-        if sys.version_info >= (3, 10):
-            from importlib.metadata import entry_points
-
-            eps = entry_points(group="mlflow.run_context_provider")
-            names = [ep.name for ep in eps]
-        else:
-            import pkg_resources
-
-            eps = list(pkg_resources.iter_entry_points("mlflow.run_context_provider"))
-            names = [ep.name for ep in eps]
+        eps = entry_points(group="mlflow.run_context_provider")
+        names = [ep.name for ep in eps]
 
         assert "descope" in names, "descope context provider not registered"
 
     def test_auth_provider_can_be_loaded(self):
-        if sys.version_info >= (3, 10):
-            from importlib.metadata import entry_points
-
-            eps = {ep.name: ep for ep in entry_points(group="mlflow.request_auth_provider")}
-        else:
-            import pkg_resources
-
-            eps = {
-                ep.name: ep
-                for ep in pkg_resources.iter_entry_points("mlflow.request_auth_provider")
-            }
+        eps = {ep.name: ep for ep in entry_points(group="mlflow.request_auth_provider")}
 
         assert "descope" in eps
         provider_class = eps["descope"].load()
@@ -66,17 +38,7 @@ class TestPluginEntryPoints:
         assert hasattr(provider_class, "get_auth")
 
     def test_header_provider_can_be_loaded(self):
-        if sys.version_info >= (3, 10):
-            from importlib.metadata import entry_points
-
-            eps = {ep.name: ep for ep in entry_points(group="mlflow.request_header_provider")}
-        else:
-            import pkg_resources
-
-            eps = {
-                ep.name: ep
-                for ep in pkg_resources.iter_entry_points("mlflow.request_header_provider")
-            }
+        eps = {ep.name: ep for ep in entry_points(group="mlflow.request_header_provider")}
 
         assert "descope" in eps
         provider_class = eps["descope"].load()
@@ -85,16 +47,7 @@ class TestPluginEntryPoints:
         assert hasattr(provider_class, "request_headers")
 
     def test_context_provider_can_be_loaded(self):
-        if sys.version_info >= (3, 10):
-            from importlib.metadata import entry_points
-
-            eps = {ep.name: ep for ep in entry_points(group="mlflow.run_context_provider")}
-        else:
-            import pkg_resources
-
-            eps = {
-                ep.name: ep for ep in pkg_resources.iter_entry_points("mlflow.run_context_provider")
-            }
+        eps = {ep.name: ep for ep in entry_points(group="mlflow.run_context_provider")}
 
         assert "descope" in eps
         provider_class = eps["descope"].load()
