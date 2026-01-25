@@ -57,12 +57,12 @@ Set the required environment variables:
 # Required
 export DESCOPE_PROJECT_ID="P2XXXXX"
 export DESCOPE_SESSION_TOKEN="<your-session-token>"
-export DESCOPE_REFRESH_TOKEN="<your-refresh-token>"
 
 # Enable the plugin
 export MLFLOW_TRACKING_AUTH=descope
 
 # Optional (with defaults)
+export DESCOPE_REFRESH_TOKEN="<your-refresh-token>"  # For automatic token renewal
 export DESCOPE_ADMIN_ROLES="admin,mlflow-admin"
 export DESCOPE_DEFAULT_PERMISSION="READ"
 export DESCOPE_USERNAME_CLAIM="sub"  # or "email"
