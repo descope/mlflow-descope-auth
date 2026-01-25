@@ -30,18 +30,17 @@ response = descope_client.magiclink.sign_in_or_up(
     login_id="user@example.com"
 )
 
-# Extract tokens
+# Extract session token
 session_token = response["sessionToken"]["jwt"]
-refresh_token = response["refreshToken"]["jwt"]
-
 print(f"export DESCOPE_SESSION_TOKEN='{session_token}'")
-print(f"export DESCOPE_REFRESH_TOKEN='{refresh_token}'")
 ```
 
 Or use any other Descope authentication method (OAuth, SAML, etc.) via:
 - [Descope Web SDK](https://docs.descope.com/build/guides/client_sdks/web/)
 - [Descope Python SDK](https://docs.descope.com/build/guides/client_sdks/python/)
 - Descope API directly
+
+> **Note**: Token refresh is handled automatically by the server, not via environment variables.
 
 ## Step 3: Install MLflow Descope Auth
 
@@ -62,7 +61,6 @@ export DESCOPE_SESSION_TOKEN="<your-session-token>"
 export MLFLOW_TRACKING_AUTH=descope
 
 # Optional (with defaults)
-export DESCOPE_REFRESH_TOKEN="<your-refresh-token>"  # For automatic token renewal
 export DESCOPE_ADMIN_ROLES="admin,mlflow-admin"
 export DESCOPE_DEFAULT_PERMISSION="READ"
 export DESCOPE_USERNAME_CLAIM="sub"  # or "email"
@@ -188,10 +186,7 @@ python -c "
 from mlflow_descope_auth import get_descope_client
 import os
 client = get_descope_client()
-result = client.validate_session(
-    os.environ['DESCOPE_SESSION_TOKEN'],
-    os.environ.get('DESCOPE_REFRESH_TOKEN')
-)
+result = client.validate_session(os.environ['DESCOPE_SESSION_TOKEN'])
 print('✓ Token valid')
 "
 ```
