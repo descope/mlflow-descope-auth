@@ -18,7 +18,6 @@ class Config:
     DESCOPE_PROJECT_ID: str
 
     # Optional - Descope settings
-    DESCOPE_MANAGEMENT_KEY: Optional[str] = None
     DESCOPE_FLOW_ID: str = "sign-up-or-in"
     DESCOPE_REDIRECT_URL: str = "/"
     DESCOPE_WEB_COMPONENT_VERSION: str = "3.54.0"
@@ -68,7 +67,6 @@ class Config:
 
         return cls(
             DESCOPE_PROJECT_ID=project_id,
-            DESCOPE_MANAGEMENT_KEY=os.getenv("DESCOPE_MANAGEMENT_KEY"),
             DESCOPE_FLOW_ID=os.getenv("DESCOPE_FLOW_ID", "sign-up-or-in"),
             DESCOPE_REDIRECT_URL=os.getenv("DESCOPE_REDIRECT_URL", "/"),
             DESCOPE_WEB_COMPONENT_VERSION=os.getenv("DESCOPE_WEB_COMPONENT_VERSION", "3.54.0"),

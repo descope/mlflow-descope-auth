@@ -13,20 +13,17 @@ logger = logging.getLogger(__name__)
 class DescopeClientWrapper:
     """Wrapper around Descope SDK for MLflow authentication."""
 
-    def __init__(self, project_id: Optional[str] = None, management_key: Optional[str] = None):
+    def __init__(self, project_id: Optional[str] = None):
         """Initialize Descope client.
 
         Args:
             project_id: Descope project ID. If None, loads from config.
-            management_key: Descope management key. If None, loads from config.
         """
         config = get_config()
         self.project_id = project_id or config.DESCOPE_PROJECT_ID
-        self.management_key = management_key or config.DESCOPE_MANAGEMENT_KEY
 
         self.client = DescopeClient(
             project_id=self.project_id,
-            management_key=self.management_key,
         )
 
         logger.info(f"Initialized Descope client for project: {self.project_id}")
