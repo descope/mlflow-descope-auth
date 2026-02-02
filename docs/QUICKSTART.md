@@ -37,48 +37,6 @@ mlflow server --app-name descope --host 0.0.0.0 --port 5000
 
 That's it! You now have a secure MLflow server with Descope authentication.
 
-## Alternative: Client-Side Mode (For CLI/Scripts)
-
-If you need programmatic access without browser login, use environment variable tokens:
-
-### Get Authentication Tokens
-
-```python
-from descope import DescopeClient
-
-descope_client = DescopeClient(project_id="P2XXXXX")
-
-# Authenticate user (example with magic link)
-response = descope_client.magiclink.sign_in_or_up(
-    method="email",
-    login_id="user@example.com"
-)
-
-# Extract session token
-session_token = response["sessionToken"]["jwt"]
-print(f"export DESCOPE_SESSION_TOKEN='{session_token}'")
-```
-
-### Configure Environment
-
-```bash
-export DESCOPE_PROJECT_ID="P2XXXXX"
-export DESCOPE_SESSION_TOKEN="<your-session-token>"
-export MLFLOW_TRACKING_AUTH=descope
-```
-
-### Use MLflow
-
-```python
-import mlflow
-
-mlflow.set_tracking_uri("http://localhost:5000")
-
-with mlflow.start_run():
-    mlflow.log_param("alpha", 0.5)
-    mlflow.log_metric("rmse", 0.8)
-```
-
 ## What's Next?
 
 ### Verify Plugin is Loaded
@@ -104,15 +62,6 @@ By default, all authenticated users have READ access. To grant admin privileges:
 2. In Descope Console, go to **Authorization → Roles**
 3. Create a role called `admin` or `mlflow-admin`
 4. Assign this role to specific users
-
-### Automatic Run Tagging
-
-The plugin automatically adds these tags to all runs:
-
-- `descope.user_id` - User's Descope ID
-- `descope.username` - Username
-- `descope.email` - User's email
-- `descope.roles` - Comma-separated list of roles
 
 ### Logout
 
