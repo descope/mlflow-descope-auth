@@ -83,3 +83,25 @@ class TestPluginEntryPoints:
         provider = DescopeContextProvider()
         assert not provider.in_context()
         assert provider.tags() == {}
+
+    def test_app_entry_point(self):
+        eps = entry_points(group="mlflow.app")
+        names = [ep.name for ep in eps]
+
+        assert "descope" in names, "descope app not registered"
+
+    def test_app_entry_point_can_be_loaded(self):
+        eps = {ep.name: ep for ep in entry_points(group="mlflow.app")}
+
+        assert "descope" in eps
+        factory = eps["descope"].load()
+        assert factory is not None
+        assert callable(factory)
+
+    def test_create_app_signature(self):
+        import inspect
+
+        from mlflow_descope_auth.server import create_app
+
+        sig = inspect.signature(create_app)
+        assert "app" in sig.parameters

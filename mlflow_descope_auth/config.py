@@ -39,6 +39,9 @@ class Config:
     SESSION_COOKIE_NAME: str = "DS"
     REFRESH_COOKIE_NAME: str = "DSR"
 
+    # Cookie security settings
+    COOKIE_SECURE: bool = False  # Set True in production (HTTPS only)
+
     @classmethod
     def from_env(cls) -> "Config":
         """Load configuration from environment variables.
@@ -60,6 +63,9 @@ class Config:
         admin_roles_str = os.getenv("DESCOPE_ADMIN_ROLES", "admin,mlflow-admin")
         admin_roles = [role.strip() for role in admin_roles_str.split(",")]
 
+        # Parse cookie secure flag
+        cookie_secure = os.getenv("DESCOPE_COOKIE_SECURE", "false").lower() == "true"
+
         return cls(
             DESCOPE_PROJECT_ID=project_id,
             DESCOPE_MANAGEMENT_KEY=os.getenv("DESCOPE_MANAGEMENT_KEY"),
@@ -72,6 +78,7 @@ class Config:
             ADMIN_ROLES=admin_roles,
             DEFAULT_PERMISSION=os.getenv("DESCOPE_DEFAULT_PERMISSION", "READ"),
             USERNAME_CLAIM=os.getenv("DESCOPE_USERNAME_CLAIM", "sub"),
+            COOKIE_SECURE=cookie_secure,
         )
 
     def is_admin_role(self, roles: List[str]) -> bool:
