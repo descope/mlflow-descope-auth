@@ -65,12 +65,9 @@ response = descope_client.magiclink.sign_in_or_up(
     login_id="user@example.com"
 )
 
-# Extract tokens
+# Extract session token
 session_token = response["sessionToken"]["jwt"]
-refresh_token = response["refreshToken"]["jwt"]
-
 print(f"export DESCOPE_SESSION_TOKEN='{session_token}'")
-print(f"export DESCOPE_REFRESH_TOKEN='{refresh_token}'")
 ```
 
 ### 3. Set Environment Variables
@@ -79,7 +76,6 @@ print(f"export DESCOPE_REFRESH_TOKEN='{refresh_token}'")
 # Required
 export DESCOPE_PROJECT_ID="P2XXXXX"
 export DESCOPE_SESSION_TOKEN="<your-session-token>"
-export DESCOPE_REFRESH_TOKEN="<your-refresh-token>"
 
 # Optional (with defaults)
 export DESCOPE_ADMIN_ROLES="admin,mlflow-admin"
@@ -197,15 +193,14 @@ descope = "mlflow_descope_auth.context_provider:DescopeContextProvider"
 
 ## Configuration Reference
 
-| Variable                  | Required | Default              | Description                                     |
-| ------------------------- | -------- | -------------------- | ----------------------------------------------- |
-| `DESCOPE_PROJECT_ID`      | ✅ Yes   | -                    | Your Descope Project ID                         |
-| `DESCOPE_SESSION_TOKEN`   | ✅ Yes   | -                    | Current session JWT token                       |
-| `DESCOPE_REFRESH_TOKEN`   | ❌ No    | -                    | Refresh token for automatic renewal             |
-| `DESCOPE_ADMIN_ROLES`     | ❌ No    | `admin,mlflow-admin` | Comma-separated list of admin roles             |
-| `DESCOPE_DEFAULT_PERMISSION` | ❌ No | `READ`               | Default permission level (READ/EDIT/MANAGE)     |
-| `DESCOPE_USERNAME_CLAIM`  | ❌ No    | `sub`                | JWT claim to use as username (`sub` or `email`) |
-| `MLFLOW_TRACKING_AUTH`    | ✅ Yes   | -                    | Set to `descope` to enable plugin               |
+| Variable                     | Required | Default              | Description                                     |
+| ---------------------------- | -------- | -------------------- | ----------------------------------------------- |
+| `DESCOPE_PROJECT_ID`         | ✅ Yes   | -                    | Your Descope Project ID                         |
+| `DESCOPE_SESSION_TOKEN`      | ✅ Yes   | -                    | Current session JWT token                       |
+| `DESCOPE_ADMIN_ROLES`        | ❌ No    | `admin,mlflow-admin` | Comma-separated list of admin roles             |
+| `DESCOPE_DEFAULT_PERMISSION` | ❌ No    | `READ`               | Default permission level (READ/EDIT/MANAGE)     |
+| `DESCOPE_USERNAME_CLAIM`     | ❌ No    | `sub`                | JWT claim to use as username (`sub` or `email`) |
+| `MLFLOW_TRACKING_AUTH`       | ✅ Yes   | -                    | Set to `descope` to enable plugin               |
 
 ## Architecture
 
@@ -257,10 +252,7 @@ python -c "
 from mlflow_descope_auth import get_descope_client
 import os
 client = get_descope_client()
-result = client.validate_session(
-    os.environ['DESCOPE_SESSION_TOKEN'],
-    os.environ.get('DESCOPE_REFRESH_TOKEN')
-)
+result = client.validate_session(os.environ['DESCOPE_SESSION_TOKEN'])
 print('✓ Token valid')
 "
 ```
