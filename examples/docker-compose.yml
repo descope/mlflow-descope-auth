@@ -7,7 +7,7 @@ services:
     command: >
       sh -c "
         pip install --no-cache-dir mlflow mlflow-descope-auth &&
-        mlflow server --app-name descope-auth --host 0.0.0.0 --port 5000
+        mlflow server --app-name descope --host 0.0.0.0 --port 5000
       "
     environment:
       # Required: Set your Descope Project ID
