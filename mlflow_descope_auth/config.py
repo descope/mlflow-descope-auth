@@ -18,7 +18,6 @@ class Config:
     DESCOPE_PROJECT_ID: str
 
     # Optional - Descope settings
-    DESCOPE_MANAGEMENT_KEY: Optional[str] = None
     DESCOPE_FLOW_ID: str = "sign-up-or-in"
     DESCOPE_REDIRECT_URL: str = "/"
     DESCOPE_WEB_COMPONENT_VERSION: str = "3.54.0"
@@ -38,6 +37,9 @@ class Config:
     # Cookie names (Descope standard)
     SESSION_COOKIE_NAME: str = "DS"
     REFRESH_COOKIE_NAME: str = "DSR"
+
+    # Cookie security settings
+    COOKIE_SECURE: bool = False  # Set True in production (HTTPS only)
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -60,9 +62,11 @@ class Config:
         admin_roles_str = os.getenv("DESCOPE_ADMIN_ROLES", "admin,mlflow-admin")
         admin_roles = [role.strip() for role in admin_roles_str.split(",")]
 
+        # Parse cookie secure flag
+        cookie_secure = os.getenv("DESCOPE_COOKIE_SECURE", "false").lower() == "true"
+
         return cls(
             DESCOPE_PROJECT_ID=project_id,
-            DESCOPE_MANAGEMENT_KEY=os.getenv("DESCOPE_MANAGEMENT_KEY"),
             DESCOPE_FLOW_ID=os.getenv("DESCOPE_FLOW_ID", "sign-up-or-in"),
             DESCOPE_REDIRECT_URL=os.getenv("DESCOPE_REDIRECT_URL", "/"),
             DESCOPE_WEB_COMPONENT_VERSION=os.getenv("DESCOPE_WEB_COMPONENT_VERSION", "3.54.0"),
@@ -72,6 +76,7 @@ class Config:
             ADMIN_ROLES=admin_roles,
             DEFAULT_PERMISSION=os.getenv("DESCOPE_DEFAULT_PERMISSION", "READ"),
             USERNAME_CLAIM=os.getenv("DESCOPE_USERNAME_CLAIM", "sub"),
+            COOKIE_SECURE=cookie_secure,
         )
 
     def is_admin_role(self, roles: List[str]) -> bool:

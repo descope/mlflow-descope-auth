@@ -14,7 +14,6 @@ def mock_config():
     """Create a mock configuration for testing."""
     return Config(
         DESCOPE_PROJECT_ID="test_project_id",
-        DESCOPE_MANAGEMENT_KEY="test_management_key",
         DESCOPE_FLOW_ID="test-flow",
         DESCOPE_REDIRECT_URL="/",
         ADMIN_ROLES=["admin", "test-admin"],

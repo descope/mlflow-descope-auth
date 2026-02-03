@@ -2,182 +2,155 @@
 
 ## How MLflow Descope Auth Works
 
-This plugin uses **MLflow's standard plugin system** to add Descope authentication to MLflow clients. It does NOT wrap or modify the MLflow server - it extends the client-side behavior.
+This plugin uses **MLflow's `mlflow.app` entry point** to add Descope authentication to the MLflow server. It provides server-side authentication with a browser-based login UI.
 
 ### Plugin Architecture
 
 ```txt
 ┌─────────────────────────────────────────┐
-│           MLflow Client                 │
-│  (mlflow.set_tracking_uri(...))         │
-├─────────────────────────────────────────┤
-│  DescopeAuthProvider                    │  ← Adds Bearer token to requests
-│  (mlflow.request_auth_provider)         │
-├─────────────────────────────────────────┤
-│  DescopeHeaderProvider                  │  ← Injects user context headers
-│  (mlflow.request_header_provider)       │
-├─────────────────────────────────────────┤
-│  DescopeContextProvider                 │  ← Auto-tags runs with user info
-│  (mlflow.run_context_provider)          │
-├─────────────────────────────────────────┤
-│           HTTP Request                  │
-│  Authorization: Bearer <descope-token>  │
-│  X-Descope-User-ID: ...                 │
-│  X-Descope-Email: ...                   │
+│           Browser                       │
+│  (User visits MLflow UI)                │
 └─────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────┐
-│         MLflow Server                   │  ← Unmodified, standard MLflow
-│  (receives authenticated requests)      │
+│         MLflow Server                   │
+│  (with Descope plugin loaded)           │
+├─────────────────────────────────────────┤
+│  before_request hook                    │  ← Validates session cookie
+│  - Check DS/DSR cookies                 │
+│  - Redirect to /auth/login if invalid   │
+│  - Set user context in Flask g          │
+├─────────────────────────────────────────┤
+│  after_request hook                     │  ← Updates cookie if refreshed
+│  - Check if token was refreshed         │
+│  - Update DS cookie with new token      │
+├─────────────────────────────────────────┤
+│  Auth Routes                            │
+│  - /auth/login   (Descope Web Component)│
+│  - /auth/logout  (Clear cookies)        │
+│  - /auth/user    (Current user info)    │
+│  - /health       (Health check)         │
 └─────────────────────────────────────────┘
 ```
 
-### Entry Points
+### Entry Point
 
-The plugin registers three MLflow entry points in `pyproject.toml`:
+The plugin registers one MLflow entry point in `pyproject.toml`:
 
 ```toml
-[project.entry-points."mlflow.request_auth_provider"]
-descope = "mlflow_descope_auth.auth_provider:DescopeAuthProvider"
-
-[project.entry-points."mlflow.request_header_provider"]
-descope = "mlflow_descope_auth.header_provider:DescopeHeaderProvider"
-
-[project.entry-points."mlflow.run_context_provider"]
-descope = "mlflow_descope_auth.context_provider:DescopeContextProvider"
+[project.entry-points."mlflow.app"]
+descope = "mlflow_descope_auth.server:create_app"
 ```
 
 ### Authentication Flow
 
-1. **Plugin Activation**
-
-   ```bash
-   export MLFLOW_TRACKING_AUTH=descope
-   ```
-
-   MLflow discovers and loads the `descope` auth provider.
-
-2. **Token Injection**
+1. **User visits MLflow UI**
 
    ```txt
-   Client calls mlflow.log_metric(...)
-        → DescopeAuthProvider.get_auth() called
-        → Returns callable that adds Authorization header
-        → Request sent with: Authorization: Bearer <DESCOPE_SESSION_TOKEN>
+   Browser → GET / 
+        → before_request hook triggered
+        → No valid session cookie?
+        → Redirect to /auth/login
    ```
 
-3. **Header Injection**
+2. **Login with Descope**
 
    ```txt
-   DescopeHeaderProvider.request_headers() called
-        → Decodes JWT token (without validation)
-        → Extracts user info (sub, email, roles, etc.)
-        → Returns headers: X-Descope-User-ID, X-Descope-Email, etc.
+   Browser → /auth/login
+        → Descope Web Component loads
+        → User authenticates via Descope flow
+        → On success: JavaScript sets cookies (DS, DSR)
+        → Redirect to MLflow UI
    ```
 
-4. **Run Tagging**
+3. **Authenticated Access**
 
    ```txt
-   mlflow.start_run() called
-        → DescopeContextProvider.in_context() → True (if token present)
-        → DescopeContextProvider.tags() called
-        → Returns tags: descope.user_id, descope.email, etc.
-        → Tags automatically added to run
+   Browser → GET / (with DS cookie)
+        → before_request hook validates session
+        → Sets user info in Flask g
+        → MLflow UI loads normally
+   ```
+
+4. **Token Refresh**
+
+   ```txt
+   Request comes in with expired session token
+        → validate_and_refresh_session() refreshes token
+        → after_request hook updates DS cookie
+        → User continues seamlessly
    ```
 
 ### Key Components
 
-#### 1. `auth_provider.py` - Request Authentication
+#### 1. `server.py` - Flask App Factory
 
 ```python
-class DescopeAuthProvider(RequestAuthProvider):
-    def get_name(self) -> str:
-        return "descope"
+def create_app(app: Flask = None) -> Flask:
+    """MLflow app factory entry point."""
+    if app is None:
+        from mlflow.server import app as mlflow_app
+        app = mlflow_app
     
-    def get_auth(self) -> Callable:
-        # Returns function that adds Bearer token to requests
-        token = os.environ.get("DESCOPE_SESSION_TOKEN")
-        return lambda: ("Bearer", token)
+    register_auth_routes(app)
+    app.before_request(_before_request)
+    app.after_request(_after_request)
+    return app
 ```
 
-#### 2. `header_provider.py` - Request Headers
+#### 2. `auth_routes.py` - Authentication Endpoints
 
-```python
-class DescopeHeaderProvider(RequestHeaderProvider):
-    def in_context(self) -> bool:
-        return bool(os.environ.get("DESCOPE_SESSION_TOKEN"))
-    
-    def request_headers(self) -> Dict[str, str]:
-        # Decode JWT and return user info as headers
-        return {
-            "X-Descope-User-ID": user_id,
-            "X-Descope-Email": email,
-            # ...
-        }
-```
+- `/auth/login` - Login page with Descope Web Component
+- `/auth/logout` - Clears cookies, redirects to login
+- `/auth/user` - Returns current user info as JSON
+- `/health` - Health check endpoint
 
-#### 3. `context_provider.py` - Run Tagging
-
-```python
-class DescopeContextProvider(RunContextProvider):
-    def in_context(self) -> bool:
-        return bool(os.environ.get("DESCOPE_SESSION_TOKEN"))
-    
-    def tags(self) -> Dict[str, str]:
-        # Return tags to add to every run
-        return {
-            "descope.user_id": user_id,
-            "descope.email": email,
-            # ...
-        }
-```
-
-#### 4. `client.py` - Descope SDK Wrapper
+#### 3. `client.py` - Descope SDK Wrapper
 
 - Session validation with Descope API
 - Token refresh handling
-- User info extraction from validated tokens
+- User claims extraction from validated tokens
 
-#### 5. `config.py` - Configuration
+#### 4. `config.py` - Configuration
 
 - Environment variable management
+- Cookie settings
 - Default values and validation
 
 ### Why This Architecture?
 
-1. **Non-Invasive**
-   - Server runs unmodified
-   - All logic is client-side
-   - No middleware, no wrapping
+1. **Server-Side Security**
+   - Tokens stored in HttpOnly cookies (not accessible to JavaScript)
+   - Server validates every request
+   - Automatic token refresh
 
 2. **Standard MLflow Integration**
-   - Uses official plugin entry points
-   - Works with any MLflow server
-   - Future-proof against MLflow updates
+   - Uses official `mlflow.app` entry point
+   - Works with stock MLflow server
+   - No custom server deployment needed
 
 3. **Minimal Dependencies**
    - Only `descope` SDK required
-   - No FastAPI, no ASGI/WSGI complexity
+   - Uses Flask (already part of MLflow)
+   - No additional frameworks
 
 4. **Simple Configuration**
    - Just environment variables
    - No config files needed
    - Works in any environment (local, Docker, K8s)
 
-### Comparison with Other Approaches
+### Cookie Details
 
-| Aspect              | Simple Plugin (This)      | Server Wrapper Approach     |
-| ------------------- | ------------------------- | --------------------------- |
-| **Where it runs**   | Client-side               | Server-side                 |
-| **Server changes**  | None                      | Wraps entire server         |
-| **Complexity**      | ~300 LOC                  | ~2000+ LOC                  |
-| **Dependencies**    | descope SDK only          | FastAPI, ASGI, middleware   |
-| **MLflow version**  | Any                       | May break on updates        |
-| **Deployment**      | pip install               | Custom server setup         |
+| Cookie | Purpose | HttpOnly | Secure |
+|--------|---------|----------|--------|
+| `DS`   | Session token | Yes | Configurable |
+| `DSR`  | Refresh token | Yes | Configurable |
+
+Set `DESCOPE_COOKIE_SECURE=true` in production (HTTPS).
 
 ### Security Considerations
 
-- Tokens are passed via environment variables (not committed to code)
-- JWT decoding in header/context providers is for extracting claims only
-- Actual token validation should happen server-side
-- For server-side validation, use MLflow's built-in auth or a reverse proxy
+- Cookies are HttpOnly (not accessible to JavaScript XSS attacks)
+- Session tokens are validated on every request
+- Refresh tokens enable seamless token renewal
+- No tokens stored in browser localStorage/sessionStorage

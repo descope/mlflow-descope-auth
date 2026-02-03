@@ -60,14 +60,14 @@ description = "Run pre-commit on all files"
 run = "uv run pre-commit run --all-files"
 
 [tasks.dev]
-description = "Start MLflow server with Descope plugin enabled"
-env = { MLFLOW_TRACKING_AUTH = "descope" }
+description = "Start MLflow server with Descope authentication"
 run = """
-if [ -z "$DESCOPE_SESSION_TOKEN" ]; then
-    echo "Warning: DESCOPE_SESSION_TOKEN not set"
-    echo "Plugin will be loaded but authentication will fail without tokens"
+if [ -z "$DESCOPE_PROJECT_ID" ]; then
+    echo "Error: DESCOPE_PROJECT_ID is required"
+    echo "  export DESCOPE_PROJECT_ID='P2XXXXX'"
+    exit 1
 fi
-uv run mlflow server --host 0.0.0.0 --port 5000
+uv run mlflow server --app-name descope --host 0.0.0.0 --port 5000
 """
 
 [tasks.verify-plugin]
@@ -80,46 +80,10 @@ if sys.version_info >= (3, 10):
 else:
     from importlib_metadata import entry_points
 
-auth_eps = [ep.name for ep in entry_points(group="mlflow.request_auth_provider")]
-header_eps = [ep.name for ep in entry_points(group="mlflow.request_header_provider")]
-context_eps = [ep.name for ep in entry_points(group="mlflow.run_context_provider")]
-
+app_eps = [ep.name for ep in entry_points(group="mlflow.app")]
 print("MLflow Plugin Entry Points:")
-auth_status = "descope" if "descope" in auth_eps else "NOT FOUND"
-header_status = "descope" if "descope" in header_eps else "NOT FOUND"
-context_status = "descope" if "descope" in context_eps else "NOT FOUND"
-print(f"  Auth Provider: {auth_status}")
-print(f"  Header Provider: {header_status}")
-print(f"  Context Provider: {context_status}")
-'
-"""
-
-[tasks.demo]
-description = "Run a demo MLflow tracking session with plugin"
-env = { MLFLOW_TRACKING_AUTH = "descope" }
-run = """
-if [ -z "$DESCOPE_SESSION_TOKEN" ]; then
-    echo "Error: DESCOPE_SESSION_TOKEN required for demo"
-    echo ""
-    echo "Set these environment variables first:"
-    echo "  export DESCOPE_PROJECT_ID='P2XXXXX'"
-    echo "  export DESCOPE_SESSION_TOKEN='your-token'"
-    echo "  export DESCOPE_REFRESH_TOKEN='your-refresh-token'"
-    exit 1
-fi
-
-echo "Running demo with Descope authentication..."
-uv run python -c '
-import mlflow
-import os
-
-print(f"MLflow Tracking URI: {mlflow.get_tracking_uri()}")
-print(f"Auth Provider: descope (via MLFLOW_TRACKING_AUTH)")
-
-with mlflow.start_run(run_name="descope-plugin-demo"):
-    mlflow.log_param("plugin", "mlflow-descope-auth")
-    mlflow.log_metric("demo_metric", 1.0)
-    print("Run logged successfully with Descope authentication!")
+app_status = "descope" if "descope" in app_eps else "NOT FOUND"
+print(f"  App Factory: {app_status}")
 '
 """
 

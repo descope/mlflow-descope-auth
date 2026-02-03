@@ -55,14 +55,8 @@ Documentation = "https://github.com/descope/mlflow-descope-auth#readme"
 Repository = "https://github.com/descope/mlflow-descope-auth"
 Issues = "https://github.com/descope/mlflow-descope-auth/issues"
 
-[project.entry-points."mlflow.request_auth_provider"]
-descope = "mlflow_descope_auth.auth_provider:DescopeAuthProvider"
-
-[project.entry-points."mlflow.request_header_provider"]
-descope = "mlflow_descope_auth.header_provider:DescopeHeaderProvider"
-
-[project.entry-points."mlflow.run_context_provider"]
-descope = "mlflow_descope_auth.context_provider:DescopeContextProvider"
+[project.entry-points."mlflow.app"]
+descope = "mlflow_descope_auth.server:create_app"
 
 [tool.setuptools.packages.find]
 where = ["."]
